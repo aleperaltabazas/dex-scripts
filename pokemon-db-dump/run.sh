@@ -6,7 +6,8 @@ if [ "$#" -ne 2 ]; then
     exit 1
 fi
 
-rm -rf pokeapi.js types.js
+rm -f pokemons.sql
+rm -f pokeapi.js types.js
 
 tsc pokeapi.ts types.ts
 node pokeapi.js $1 $2
