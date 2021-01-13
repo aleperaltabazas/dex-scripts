@@ -2,3 +2,4 @@ pokemons.sql
 node_modules/
 package-lock.json
 *.js
+dist

@@ -1,12 +1,18 @@
 import axios, { AxiosRequestConfig } from "axios";
 import * as fs from "fs";
+import {
+  Chain,
+  EvolutionChain,
+  EvolutionInsert,
+  EvolutionMethod,
+  Pokemon,
+  PokemonInsert,
+  Species,
+} from "./types";
 
 if (process.argv.length < 4) {
   console.error("Error: missing arguments 'first' and 'last'");
 }
-
-let first = Number.parseInt(process.argv[2]);
-let last = Number.parseInt(process.argv[3]);
 
 async function fetchPokemon(dexNumber: number) {
   let config: AxiosRequestConfig = {
@@ -33,43 +39,6 @@ async function fetchEvolutionChain(species: Species) {
   };
 
   return axios.request<EvolutionChain>(config).then((res) => res.data);
-}
-
-function sql(pokemon: PokemonInsert) {
-  return `
-insert into pokemons (name, national_dex_number, primary_ability, secondary_ability, hidden_ability, primary_type, secondary_type, male_prob, female_prob, hp, attack, defense, special_attack, special_defense, speed)
-values (
-  '${pokemon.name}', 
-  ${pokemon.dexNumber}, 
-  '${pokemon.primaryAbility}', 
-  ${orNullString(pokemon.secondaryAbility)}, 
-  ${orNullString(pokemon.hiddenAbility)},
-  '${pokemon.primaryType}',
-  ${orNullString(pokemon.secondaryType)},
-  ${orNullNumber(pokemon.maleProbability)},
-  ${orNullNumber(pokemon.femaleProbability)},
-  ${pokemon.hp},
-  ${pokemon.attack},
-  ${pokemon.defense},
-  ${pokemon.specialAttack},
-  ${pokemon.specialDefense},
-  ${pokemon.speed}
-);
-
-set @pokemon_id = LAST_INSERT_ID();
-${pokemon.evolutions.map(
-  (e) => `
-insert into evolutions (name, pokemon_id, method)
-values ('${e.name}', @pokemon_id, '${JSON.stringify(e.method)}');`
-)}`;
-}
-
-function orNullString(s?: string) {
-  return s ? "'" + s + "'" : "null";
-}
-
-function orNullNumber(n?: number) {
-  return n ? n : "null";
 }
 
 function buildEvolutions(pokemon: string, chain: Chain): EvolutionInsert[] {
@@ -133,7 +102,9 @@ function buildEvolutions(pokemon: string, chain: Chain): EvolutionInsert[] {
     });
 }
 
-async function run() {
+export async function fetchPokedex(first: number, last: number) {
+  const pokemon: PokemonInsert[] = [];
+
   for (let dexNumber = first; dexNumber <= last; dexNumber++) {
     console.log(`Fetching #${dexNumber}`);
 
@@ -141,36 +112,17 @@ async function run() {
     const species = await fetchSpecies(dexNumber);
     const evolutionChain = await fetchEvolutionChain(species);
 
-    const femaleProbability =
-      species.gender_rate == -1 ? undefined : (species.gender_rate * 100) / 8;
-    const maleProbability =
-      femaleProbability == undefined ? undefined : 100 - femaleProbability;
     const insert: PokemonInsert = {
       name: poke.name,
       dexNumber: dexNumber,
       primaryAbility: poke.abilities[0].ability.name,
       secondaryAbility: poke.abilities.find((a) => a.slot == 2)?.ability?.name,
       hiddenAbility: poke.abilities.find((a) => a.is_hidden)?.ability?.name,
-      primaryType: poke.types[0].type.name.toUpperCase(),
-      secondaryType: poke.types
-        .find((a) => a.slot == 2)
-        ?.type?.name?.toUpperCase(),
-      maleProbability: maleProbability,
-      femaleProbability: femaleProbability,
-      hp: poke.stats[0].base_stat,
-      attack: poke.stats[1].base_stat,
-      specialAttack: poke.stats[3].base_stat,
-      defense: poke.stats[2].base_stat,
-      specialDefense: poke.stats[4].base_stat,
-      speed: poke.stats[5].base_stat,
-
       evolutions: buildEvolutions(poke.name, evolutionChain.chain),
     };
 
-    fs.appendFile("pokemons.sql", sql(insert), () =>
-      console.log(`Done with #${dexNumber}`)
-    );
+    pokemon.push(insert);
   }
-}
 
-run();
+  return pokemon;
+}
