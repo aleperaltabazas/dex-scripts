@@ -29,13 +29,14 @@ interface Args {
 
 function insertPokemon(pokemon: PokemonInsert) {
   return `
-insert into pokemon (name, national_dex_number, primary_ability, secondary_ability, hidden_ability)
+insert into pokemon (name, national_dex_number, primary_ability, secondary_ability, hidden_ability, gen)
 values (
   '${pokemon.name}', 
   ${pokemon.dexNumber}, 
   '${pokemon.primaryAbility}', 
   ${orNullString(pokemon.secondaryAbility)}, 
-  ${orNullString(pokemon.hiddenAbility)}
+  ${orNullString(pokemon.hiddenAbility)},
+  ${pokemon.gen}
 );
 
 set @pokemon_id = LAST_INSERT_ID();

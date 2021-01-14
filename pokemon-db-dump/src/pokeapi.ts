@@ -63,6 +63,19 @@ function fromGenerationString(
   }
 }
 
+function fromGenderNumber(n: 1 | 2 | 3 | undefined) {
+  switch (n) {
+    case 1:
+      return "female";
+    case 2:
+      return "male";
+    case 3:
+      return "genderless";
+    case undefined:
+      return undefined;
+  }
+}
+
 async function buildEvolutions(pokemon: string, chain: Chain, gen: number) {
   if (chain.species.name != pokemon) {
     const next = chain.evolves_to.find((e) => e.species.name == pokemon);
@@ -103,11 +116,12 @@ async function buildEvolutions(pokemon: string, chain: Chain, gen: number) {
             type: "LEVEL_UP",
             level: detail.min_level,
             friendship: detail.min_happiness,
-            move: detail.known_move_type,
-            location: detail.location,
+            move: detail.known_move?.name,
+            moveType: detail.known_move_type?.name,
+            location: detail.location?.name,
             time: detail.time_of_day || undefined,
-            item: detail.held_item,
-            gender: detail.gender,
+            item: detail.held_item?.name,
+            gender: fromGenderNumber(detail.gender),
             upsideDown: detail.turn_upside_down,
           };
           break;
@@ -116,14 +130,15 @@ async function buildEvolutions(pokemon: string, chain: Chain, gen: number) {
           method = {
             type: "USE_ITEM",
             item: detail.item?.name!,
+            gender: fromGenderNumber(detail.gender),
           };
           break;
         }
         case "trade": {
           method = {
             type: "TRADE",
-            item: detail.held_item,
-            pokemon: detail.trade_species,
+            item: detail.held_item.name,
+            pokemon: detail.trade_species.name,
           };
           break;
         }
@@ -168,6 +183,7 @@ export async function fetchPokedex(
       hiddenAbility: poke.abilities.find((a) => a.is_hidden)?.ability?.name,
       evolutions: evolutions,
       forms: forms.filter((f) => f.number == dexNumber),
+      gen: gen,
     };
 
     cb(insert);

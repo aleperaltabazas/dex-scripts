@@ -1,3 +1,8 @@
+export type NamedAPIResource = {
+  name: string;
+  url: string;
+};
+
 export type Pokemon = {
   name: string;
   abilities: Ability[];
@@ -6,14 +11,14 @@ export type Pokemon = {
 };
 
 export type Ability = {
-  ability: { name: string };
+  ability: NamedAPIResource;
   slot: number;
   is_hidden: boolean;
 };
 
 export type Type = {
   slot: number;
-  type: { name: string };
+  type: NamedAPIResource;
 };
 
 export type Stat = {
@@ -21,7 +26,7 @@ export type Stat = {
 };
 
 export type Species = {
-  evolution_chain: { url: string };
+  evolution_chain: NamedAPIResource;
   gender_rate: number;
   generation: {
     name:
@@ -40,25 +45,26 @@ export type EvolutionChain = {
 export type Chain = {
   evolution_details: EvolutionDetails[];
   evolves_to: Chain[];
-  species: { name: string; url: string };
+  species: NamedAPIResource;
 };
 
 export type EvolutionDetails = {
-  gender?: string;
-  held_item?: string;
+  gender?: 1 | 2 | 3;
+  held_item?: NamedAPIResource;
   item?: { name: string };
-  known_move_type?: string;
-  location?: string;
+  known_move?: NamedAPIResource;
+  known_move_type?: NamedAPIResource;
+  location?: { name: string };
   min_affection?: number;
   min_beauty?: number;
   min_happiness?: number;
   min_level?: number;
   needs_overworld_rain?: false;
-  party_species?: string;
-  party_type?: string;
+  party_species?: NamedAPIResource;
+  party_type?: NamedAPIResource;
   relative_physical_stats?: number;
-  time_of_day?: string;
-  trade_species?: string;
+  time_of_day?: "day" | "night";
+  trade_species?: NamedAPIResource;
   turn_upside_down?: boolean;
   trigger: { name: "level-up" | "trade" | "use-item" | "shed" | "other" };
 };
@@ -71,6 +77,7 @@ export type PokemonInsert = {
   hiddenAbility?: string;
   evolutions: EvolutionInsert[];
   forms: Form[];
+  gen: number;
 };
 
 export type EvolutionInsert = {
@@ -82,6 +89,7 @@ export type LevelUp = {
   level?: number;
   friendship?: number;
   move?: string;
+  moveType?: string;
   location?: string;
   time?: string;
   item?: string;
