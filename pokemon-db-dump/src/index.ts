@@ -102,21 +102,25 @@ async function run() {
   let start = args.start || 1;
   let finish: number;
 
+  function minOrDefault(n: number) {
+    return args.finish ? Math.min(args.finish, n) : n;
+  }
+
   switch (gen) {
     case 1:
-      finish = args.finish || 151;
+      finish = minOrDefault(151);
       break;
     case 2:
-      finish = args.finish || 251;
+      finish = minOrDefault(251);
       break;
     case 3:
-      finish = args.finish || 386;
+      finish = minOrDefault(386);
       break;
     case 4:
-      finish = args.finish || 493;
+      finish = minOrDefault(493);
       break;
     case 5:
-      finish = args.finish || 649;
+      finish = minOrDefault(649);
       break;
   }
 
