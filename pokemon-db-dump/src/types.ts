@@ -114,10 +114,20 @@ export type Trade = {
 
 export type EvolutionMethod = LevelUp | UseItem | Trade;
 
+export type GameTitle =
+  | "rby"
+  | "gsc"
+  | "rse"
+  | "frlg"
+  | "dppt"
+  | "hgss"
+  | "bw"
+  | "b2w2";
+
 export type Form = {
   name: string;
   number: number;
-  games?: string[];
+  games?: GameTitle[];
   primaryAbility: string;
   secondaryAbility?: string;
   hiddenAbility?: string;

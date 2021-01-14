@@ -2,8 +2,8 @@ import axios, { AxiosRequestConfig } from "axios";
 import {
   Chain,
   EvolutionChain,
-  EvolutionInsert,
   EvolutionMethod,
+  GameTitle,
   Pokemon,
   PokemonInsert,
   Species,
@@ -59,6 +59,24 @@ function fromGenerationString(
     case "generation-iv":
       return 4;
     case "generation-v":
+      return 5;
+  }
+}
+
+function generationFromGame(s: GameTitle) {
+  switch (s) {
+    case "rby":
+      return 1;
+    case "gsc":
+      return 2;
+    case "rse":
+    case "frlg":
+      return 3;
+    case "dppt":
+    case "hgss":
+      return 4;
+    case "bw":
+    case "b2w2":
       return 5;
   }
 }
@@ -182,7 +200,11 @@ export async function fetchPokedex(
       secondaryAbility: poke.abilities.find((a) => a.slot == 2)?.ability?.name,
       hiddenAbility: poke.abilities.find((a) => a.is_hidden)?.ability?.name,
       evolutions: evolutions,
-      forms: forms.filter((f) => f.number == dexNumber),
+      forms: forms.filter(
+        (f) =>
+          f.number == dexNumber &&
+          (f.games ? f.games.some((g) => generationFromGame(g) <= gen) : true)
+      ),
       gen: gen,
     };
 
