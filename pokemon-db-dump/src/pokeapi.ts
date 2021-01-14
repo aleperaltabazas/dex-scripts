@@ -1,5 +1,4 @@
 import axios, { AxiosRequestConfig } from "axios";
-import * as fs from "fs";
 import {
   Chain,
   EvolutionChain,
@@ -9,6 +8,7 @@ import {
   PokemonInsert,
   Species,
 } from "./types";
+import formList from "./forms";
 
 if (process.argv.length < 4) {
   console.error("Error: missing arguments 'first' and 'last'");
@@ -41,22 +41,59 @@ async function fetchEvolutionChain(species: Species) {
   return axios.request<EvolutionChain>(config).then((res) => res.data);
 }
 
-function buildEvolutions(pokemon: string, chain: Chain): EvolutionInsert[] {
+function fromGenerationString(
+  gen:
+    | "generation-i"
+    | "generation-ii"
+    | "generation-iii"
+    | "generation-iv"
+    | "generation-v"
+) {
+  switch (gen) {
+    case "generation-i":
+      return 1;
+    case "generation-ii":
+      return 2;
+    case "generation-iii":
+      return 3;
+    case "generation-iv":
+      return 4;
+    case "generation-v":
+      return 5;
+  }
+}
+
+async function buildEvolutions(pokemon: string, chain: Chain, gen: number) {
   if (chain.species.name != pokemon) {
     const next = chain.evolves_to.find((e) => e.species.name == pokemon);
-    return next ? buildEvolutions(pokemon, next) : [];
+    return next ? buildEvolutions(pokemon, next, gen) : [];
   }
 
-  return chain.evolves_to
-    .filter((e) =>
-      e.evolution_details.every(
-        (d) =>
-          d.trigger.name == "level-up" ||
-          d.trigger.name == "use-item" ||
-          d.trigger.name == "trade"
-        // until the rest of the evolution methods are incorporated
-      )
+  const supportedEvolutionTypes = chain.evolves_to.filter((e) =>
+    e.evolution_details.every(
+      (d) =>
+        d.trigger.name == "level-up" ||
+        d.trigger.name == "use-item" ||
+        d.trigger.name == "trade"
+      // until the rest of the evolution methods are incorporated
     )
+  );
+
+  const evosSpecies = await Promise.all(
+    supportedEvolutionTypes.map((e) =>
+      axios
+        .get<Species>(e.species.url)
+        .then((res) => res.data)
+        .then((s) => {
+          let tuple: [Species, Chain] = [s, e];
+          return tuple;
+        })
+    )
+  );
+
+  return evosSpecies
+    .filter(([s, _]) => fromGenerationString(s.generation.name) <= gen)
+    .map(([_, e]) => e)
     .map((e) => {
       const detail = e.evolution_details[0];
       let method: EvolutionMethod;
@@ -65,7 +102,7 @@ function buildEvolutions(pokemon: string, chain: Chain): EvolutionInsert[] {
           method = {
             type: "LEVEL_UP",
             level: detail.min_level,
-            friendship: detail.min_happinnes,
+            friendship: detail.min_happiness,
             move: detail.known_move_type,
             location: detail.location,
             time: detail.time_of_day || undefined,
@@ -78,7 +115,7 @@ function buildEvolutions(pokemon: string, chain: Chain): EvolutionInsert[] {
         case "use-item": {
           method = {
             type: "USE_ITEM",
-            item: detail.item!,
+            item: detail.item?.name!,
           };
           break;
         }
@@ -102,8 +139,13 @@ function buildEvolutions(pokemon: string, chain: Chain): EvolutionInsert[] {
     });
 }
 
-export async function fetchPokedex(first: number, last: number) {
-  const pokemon: PokemonInsert[] = [];
+export async function fetchPokedex(
+  first: number,
+  last: number,
+  gen: number,
+  cb: (p: PokemonInsert) => void
+) {
+  const forms = formList;
 
   for (let dexNumber = first; dexNumber <= last; dexNumber++) {
     console.log(`Fetching #${dexNumber}`);
@@ -112,17 +154,22 @@ export async function fetchPokedex(first: number, last: number) {
     const species = await fetchSpecies(dexNumber);
     const evolutionChain = await fetchEvolutionChain(species);
 
+    const evolutions = await buildEvolutions(
+      poke.name,
+      evolutionChain.chain,
+      gen
+    );
+
     const insert: PokemonInsert = {
       name: poke.name,
       dexNumber: dexNumber,
       primaryAbility: poke.abilities[0].ability.name,
       secondaryAbility: poke.abilities.find((a) => a.slot == 2)?.ability?.name,
       hiddenAbility: poke.abilities.find((a) => a.is_hidden)?.ability?.name,
-      evolutions: buildEvolutions(poke.name, evolutionChain.chain),
+      evolutions: evolutions,
+      forms: forms.filter((f) => f.number == dexNumber),
     };
 
-    pokemon.push(insert);
+    cb(insert);
   }
-
-  return pokemon;
 }

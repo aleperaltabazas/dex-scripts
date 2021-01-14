@@ -23,6 +23,14 @@ export type Stat = {
 export type Species = {
   evolution_chain: { url: string };
   gender_rate: number;
+  generation: {
+    name:
+      | "generation-i"
+      | "generation-ii"
+      | "generation-iii"
+      | "generation-iv"
+      | "generation-v";
+  };
 };
 
 export type EvolutionChain = {
@@ -32,18 +40,18 @@ export type EvolutionChain = {
 export type Chain = {
   evolution_details: EvolutionDetails[];
   evolves_to: Chain[];
-  species: { name: string };
+  species: { name: string; url: string };
 };
 
 export type EvolutionDetails = {
   gender?: string;
   held_item?: string;
-  item?: string;
+  item?: { name: string };
   known_move_type?: string;
   location?: string;
   min_affection?: number;
   min_beauty?: number;
-  min_happinnes?: number;
+  min_happiness?: number;
   min_level?: number;
   needs_overworld_rain?: false;
   party_species?: string;
@@ -62,6 +70,7 @@ export type PokemonInsert = {
   secondaryAbility?: string;
   hiddenAbility?: string;
   evolutions: EvolutionInsert[];
+  forms: Form[];
 };
 
 export type EvolutionInsert = {
@@ -83,16 +92,25 @@ export type LevelUp = {
 };
 
 export type UseItem = {
-  item: String;
-  gender?: String;
-  region?: String;
+  item: string;
+  gender?: string;
+  region?: string;
   type: "USE_ITEM";
 };
 
 export type Trade = {
-  item?: String;
-  pokemon?: String;
+  item?: string;
+  pokemon?: string;
   type: "TRADE";
 };
 
 export type EvolutionMethod = LevelUp | UseItem | Trade;
+
+export type Form = {
+  name: string;
+  number: number;
+  games?: string[];
+  primaryAbility: string;
+  secondaryAbility?: string;
+  hiddenAbility?: string;
+};
