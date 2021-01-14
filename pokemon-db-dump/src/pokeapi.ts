@@ -137,8 +137,8 @@ async function buildEvolutions(pokemon: string, chain: Chain, gen: number) {
         case "trade": {
           method = {
             type: "TRADE",
-            item: detail.held_item.name,
-            pokemon: detail.trade_species.name,
+            item: detail.held_item?.name,
+            pokemon: detail.trade_species?.name,
           };
           break;
         }

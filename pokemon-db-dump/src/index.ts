@@ -105,14 +105,19 @@ async function run() {
   switch (gen) {
     case 1:
       finish = args.finish || 151;
+      break;
     case 2:
       finish = args.finish || 251;
+      break;
     case 3:
       finish = args.finish || 386;
+      break;
     case 4:
       finish = args.finish || 493;
+      break;
     case 5:
       finish = args.finish || 649;
+      break;
   }
 
   await fetchPokedex(start, finish, gen, (p) => {
