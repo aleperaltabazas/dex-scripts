@@ -95,6 +95,10 @@ function fromGenderNumber(n: 1 | 2 | 3 | undefined) {
 }
 
 async function buildEvolutions(pokemon: string, chain: Chain, gen: number) {
+  if (pokemon == "phione" || pokemon == "manaphy") {
+    return [];
+  }
+
   if (chain.species.name != pokemon) {
     const next = chain.evolves_to.find((e) => e.species.name == pokemon);
     return next ? buildEvolutions(pokemon, next, gen) : [];

@@ -3,3 +3,8 @@ node_modules/
 package-lock.json
 *.js
 dist
+gen-1.sql
+gen-2.sql
+gen-3.sql
+gen-4.sql
+gen-5.sql
