@@ -139,12 +139,12 @@ async function buildEvolutions(pokemon: string, chain: Chain, gen: number) {
             level: detail.min_level,
             friendship: detail.min_happiness,
             move: detail.known_move?.name,
-            moveType: detail.known_move_type?.name,
+            move_type: detail.known_move_type?.name,
             location: detail.location?.name,
             time: detail.time_of_day || undefined,
             item: detail.held_item?.name,
             gender: fromGenderNumber(detail.gender),
-            upsideDown: detail.turn_upside_down,
+            upside_down: detail.turn_upside_down,
           };
           break;
         }
@@ -176,13 +176,9 @@ async function buildEvolutions(pokemon: string, chain: Chain, gen: number) {
     });
 }
 
-export async function fetchPokedex(
-  first: number,
-  last: number,
-  gen: number,
-  cb: (p: PokemonInsert) => void
-) {
+export async function fetchPokedex(first: number, last: number, gen: number) {
   const forms = formList;
+  const pokemon: PokemonInsert[] = [];
 
   for (let dexNumber = first; dexNumber <= last; dexNumber++) {
     console.log(`Fetching #${dexNumber}`);
@@ -199,10 +195,10 @@ export async function fetchPokedex(
 
     const insert: PokemonInsert = {
       name: poke.name,
-      dexNumber: dexNumber,
-      primaryAbility: poke.abilities[0].ability.name,
-      secondaryAbility: poke.abilities.find((a) => a.slot == 2)?.ability?.name,
-      hiddenAbility: poke.abilities.find((a) => a.is_hidden)?.ability?.name,
+      national_pokedex_number: dexNumber,
+      primary_ability: poke.abilities[0].ability.name,
+      secondary_ability: poke.abilities.find((a) => a.slot == 2)?.ability?.name,
+      hidden_ability: poke.abilities.find((a) => a.is_hidden)?.ability?.name,
       evolutions: evolutions,
       forms: forms.filter(
         (f) =>
@@ -212,6 +208,8 @@ export async function fetchPokedex(
       gen: gen,
     };
 
-    cb(insert);
+    pokemon.push(insert);
   }
+
+  return pokemon;
 }

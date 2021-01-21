@@ -32,10 +32,10 @@ function insertPokemon(pokemon: PokemonInsert) {
 insert into pokemon (name, national_dex_number, primary_ability, secondary_ability, hidden_ability, gen)
 values (
   '${pokemon.name}', 
-  ${pokemon.dexNumber}, 
-  '${pokemon.primaryAbility}', 
-  ${orNullString(pokemon.secondaryAbility)}, 
-  ${orNullString(pokemon.hiddenAbility)},
+  ${pokemon.national_pokedex_number}, 
+  '${pokemon.primary_ability}', 
+  ${orNullString(pokemon.secondary_ability)}, 
+  ${orNullString(pokemon.hidden_ability)},
   ${pokemon.gen}
 );
 
@@ -124,11 +124,14 @@ async function run() {
       break;
   }
 
-  await fetchPokedex(start, finish, gen, (p) => {
-    fs.appendFile("pokemons.sql", insertPokemon(p), () =>
-      console.log(`Wrote #${p.dexNumber}`)
-    );
-  });
+  const pokemon = await fetchPokedex(start, finish, gen);
+  fs.appendFileSync(
+    "pokemon.json",
+    `[${pokemon.map((p) => JSON.stringify(p)).join(",")}]`
+  );
+  // fs.appendFile("pokemons.sql", insertPokemon(p), () =>
+  //   console.log(`Wrote #${p.national_pokedex_number}`)
+  // );
 }
 
 run();

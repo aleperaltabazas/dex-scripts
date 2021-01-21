@@ -1,10 +1,10 @@
-pokemons.sql
 node_modules/
 package-lock.json
 *.js
 dist
-gen-1.sql
-gen-2.sql
-gen-3.sql
-gen-4.sql
-gen-5.sql
+pokemon.json
+gen-1.json
+gen-2.json
+gen-3.json
+gen-4.json
+gen-5.json

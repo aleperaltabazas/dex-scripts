@@ -71,10 +71,10 @@ export type EvolutionDetails = {
 
 export type PokemonInsert = {
   name: string;
-  dexNumber: number;
-  primaryAbility: string;
-  secondaryAbility?: string;
-  hiddenAbility?: string;
+  national_pokedex_number: number;
+  primary_ability: string;
+  secondary_ability?: string;
+  hidden_ability?: string;
   evolutions: EvolutionInsert[];
   forms: Form[];
   gen: number;
@@ -89,12 +89,12 @@ export type LevelUp = {
   level?: number;
   friendship?: number;
   move?: string;
-  moveType?: string;
+  move_type?: string;
   location?: string;
   time?: string;
   item?: string;
   gender?: string;
-  upsideDown?: boolean;
+  upside_down?: boolean;
   region?: string;
   type: "LEVEL_UP";
 };
