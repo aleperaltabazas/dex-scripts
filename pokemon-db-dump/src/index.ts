@@ -1,6 +1,5 @@
 import { fetchPokedex } from "./pokeapi";
 import fs from "fs";
-import { EvolutionInsert, Form, PokemonInsert } from "./types";
 
 function parseArgs(): Args {
   const args = process.argv.slice(2);
@@ -27,49 +26,6 @@ interface Args {
   finish?: number;
 }
 
-function insertPokemon(pokemon: PokemonInsert) {
-  return `
-insert into pokemon (name, national_dex_number, primary_ability, secondary_ability, hidden_ability, gen)
-values (
-  '${pokemon.name}', 
-  ${pokemon.national_pokedex_number}, 
-  '${pokemon.primary_ability}', 
-  ${orNullString(pokemon.secondary_ability)}, 
-  ${orNullString(pokemon.hidden_ability)},
-  ${pokemon.gen}
-);
-
-set @pokemon_id = LAST_INSERT_ID();
-${insertEvolutions(pokemon.evolutions)}
-${insertForms(pokemon.forms)}`;
-}
-
-function insertEvolutions(evolutions: EvolutionInsert[]) {
-  if (evolutions.length == 0) {
-    return "";
-  } else {
-    return `
-insert into evolutions (name, pokemon_id, method)
-values
-${evolutions
-  .map((e) => `('${e.name}', @pokemon_id, '${JSON.stringify(e.method)}')`)
-  .join(",\n")};
-`;
-  }
-}
-
-function insertForms(forms: Form[]) {
-  if (forms.length == 0) {
-    return "";
-  } else {
-    return `
-insert into forms (name, pokemon_id)
-values
-${forms.map((f) => `('${f.name}', @pokemon_id)`).join(",\n")};
-    `;
-  }
-}
-
 function orNullString(s?: string) {
   return s ? "'" + s + "'" : "null";
 }
@@ -92,8 +48,8 @@ function requireGeneration(number: number): 1 | 2 | 3 | 4 | 5 {
 }
 
 async function run() {
-  if (fs.existsSync("pokemons.sql")) {
-    fs.unlinkSync("pokemons.sql");
+  if (fs.existsSync("pokemon.json")) {
+    fs.unlinkSync("pokemon.json");
   }
 
   const args = parseArgs();
