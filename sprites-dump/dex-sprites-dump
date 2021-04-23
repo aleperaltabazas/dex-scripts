@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -e
+
+if [ $# -ne 2 ]; then
+    echo "Error: expected 2 arguments but found $#"
+    echo "Run as dex-sprites-dump <gen> <dir>"
+    exit 1
+fi
+
+npm start --prefix <dex-sprites-dump-root> $1 $2
