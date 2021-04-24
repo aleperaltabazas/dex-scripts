@@ -56,3 +56,5 @@ cabal.project.local~
 # End of https://www.toptal.com/developers/gitignore/api/linux,visualstudiocode,haskell
 pokeapi-sprites
 sprites
+icons
+pokencyclopedia-icons
