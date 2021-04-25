@@ -29,8 +29,10 @@ data ProgramOptions
 optionParser = do
   refreshSprites <- switch (long "refresh-sprites" <> help "Refresh pokeapi sprites sprites")
   refreshIcons   <- switch (long "refresh-icons" <> help "Refresh pokencyclopedia icons")
-  directory      <- optional $ strOption (long "directory" <> short 'd' <> help "Destination directory")
-  source         <- optional $ strOption (long "source" <> short 's' <> help "Pokeapi sprites source directory")
+  directory      <- optional
+    $ strOption (long "directory" <> short 'd' <> help "Destination directory for the sprites/ and icons/ directories")
+  source <- optional $ strOption
+    (long "source" <> short 's' <> help "Source directory containing pokencyclopedia-icons/ and pokeapi-sprites/ directories")
   return ProgramOptions { .. }
 
 whenDirectoryExists :: (String -> IO ()) -> String -> IO ()
@@ -54,20 +56,20 @@ clonePokeapiSprites path = callCommand [i|git clone git@github.com:pokeapi/sprit
 generateSprites :: ProgramOptions -> IO ()
 generateSprites opts = do
   let spritesDir     = fromMaybe "sprites" (directory opts)
-  let pokeapiSprites = fromMaybe "pokeapi-sprites" (source opts)
+  let pokeapiSprites = maybe "pokeapi-sprites" (++ "/pokeapi-sprites") (source opts)
   when (refreshSprites opts) $ removeDirectoryRecursive `whenDirectoryExists` pokeapiSprites
   removeDirectoryRecursive `whenDirectoryExists` spritesDir
   clonePokeapiSprites `whenDirectoryDoesNotExist` pokeapiSprites
   createDirectory spritesDir
   pokedex <- entries <$> fetchNationalPokedex
   forM_ games $ \g@Game {..} -> do
+    putStrLn [i|Generating #{key} sprites|]
     createDirectory [i|sprites/#{key}|]
     let pokeapiDirectory = [i|pokeapi-sprites/sprites/pokemon/versions/generation-#{romanNumber}/#{folder}|] :: String
     files <- filter (applicable g) <$> listDirectory pokeapiDirectory
     forM_ files $ \file -> do
       let number                             = read . takeWhile isDigit $ file
       let Entries { species = Species {..} } = fromJust . find (\Entries {..} -> entryNumber == number) $ pokedex
-      putStrLn [i|Generating #{name} sprite for gen #{gen}|]
       copyFile [i|#{pokeapiDirectory}/#{file}|] [i|sprites/#{key}/#{name}.#{extension}|]
  where
   applicable Game {..} file =
@@ -75,17 +77,18 @@ generateSprites opts = do
 
 generateIcons :: ProgramOptions -> IO ()
 generateIcons ProgramOptions {..} = do
-  removeDirectoryRecursive `whenDirectoryExists` "icons"
-  createDirectory `whenDirectoryDoesNotExist` "icons"
-  when refreshIcons $ removeDirectoryRecursive "pokencyclopedia-icons"
+  let icons                = maybe "icons" (++ "/icons") directory
+  let pokencyclopediaIcons = maybe "pokencyclopedia-icons" (++ "/pokencyclopedia-icons") source
+  removeDirectoryRecursive `whenDirectoryExists` icons
+  createDirectory `whenDirectoryDoesNotExist` icons
+  when refreshIcons $ removeDirectoryRecursive pokencyclopediaIcons
   downloadPokencyclopediaIcons
   forM_ [1 .. 5 :: Int] $ \gen -> do
-    let pokencyclopediaIcons = [i|pokencyclopedia-icons/gen#{gen}|]
+    putStrLn [i|Generating gen #{gen} icons|]
     files <-
-      map ((pokencyclopediaIcons ++ "/") ++)
-      .   sortOn (\xs -> (read $ takeWhile isDigit xs) :: Int)
-      <$> listDirectory pokencyclopediaIcons
-    callCommand [i|montage #{unwords files} -background none -geometry +0+0 icons/gen#{gen}.png|]
+      map ([i|#{pokencyclopediaIcons}/gen#{gen}/|] ++) . sortOn (\xs -> (read $ takeWhile isDigit xs) :: Int) <$> listDirectory
+        [i|#{pokencyclopediaIcons}/gen#{gen}|]
+    callCommand [i|montage #{unwords files} -background none -geometry +0+0 #{icons}/gen#{gen}.png|]
 
 downloadPokencyclopediaIcons :: IO ()
 downloadPokencyclopediaIcons = do
@@ -97,6 +100,7 @@ downloadPokencyclopediaIcons = do
   forM_ pokemonPerGen $ \(gen, ps) -> ifDirectoryDoesNotExist [i|#{pokencyclopediaIcons}/gen#{gen}|] $ \dir -> do
     createDirectory dir
     forM_ ps $ \(number, name) -> do
+      putStrLn [i|Downloading #{name} icons for gen #{gen}...|]
       let alternateForms = formNames <$> find (\WithAlternateForms { number = n, ..} -> gen `elem` gens && n == number) forms
       case alternateForms of
         Nothing -> doDownload dir gen (if gen `elem` [1, 2] then [i|#{pad number}|] else [i|#{pad number}_1.png|]) (show number)
@@ -106,7 +110,6 @@ downloadPokencyclopediaIcons = do
  where
   doDownload :: FilePath -> Int -> String -> FilePath -> IO ()
   doDownload dir gen key fileName = do
-    putStrLn [i|Downloading #{fileName} icons for gen #{gen}...|]
     let url        = iconUrl gen key
     let pathToFile = [i|#{folder gen}/#{fileName}.#{extension gen}|] :: String
     callCommand [i|wget -q #{url} -O #{pathToFile}|]
@@ -123,7 +126,7 @@ downloadPokencyclopediaIcons = do
   pngs                 = [i|#{pokencyclopediaIcons}/pngs|]
 
   perGen pokedex = do
-    (cut, g) <- nub . map (\Game {..} -> (cutoff, gen)) $ games
+    (cut, g) <- [(151, 1), (251, 2), (386, 3), (493, 4), (649, 5)]
     let ps = map (\Entries { entryNumber = n, species = Species {..} } -> (n, name)) . take cut $ pokedex
     return (g, ps)
 
@@ -156,5 +159,5 @@ pad n
 main :: IO ()
 main = do
   opts <- execParser $ info (optionParser <**> helper) (fullDesc <> header "dex-assets")
-  -- generateSprites opts
+  generateSprites opts
   generateIcons opts
