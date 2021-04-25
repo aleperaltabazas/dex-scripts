@@ -22,6 +22,7 @@ data Game
   , cutoff :: Int
   , extension :: String
   , key :: String
+  , extent :: Int
   } deriving (Show, Eq)
 
 data WithAlternateForms
@@ -31,20 +32,31 @@ data WithAlternateForms
   , formNames :: [(String, String)]
   }
 
-yellow = Game { romanNumber = "i", gen = 1, folder = "yellow/transparent", cutoff = 151, extension = "png", key = "rby" }
-crystal = Game { romanNumber = "ii", gen = 2, folder = "crystal/transparent", cutoff = 251, extension = "png", key = "gsc" }
-emerald = Game { romanNumber = "iii", gen = 3, folder = "emerald", cutoff = 386, extension = "png", key = "rse" }
+yellow =
+  Game { romanNumber = "i", gen = 1, folder = "yellow/transparent", cutoff = 151, extension = "png", key = "rby", extent = 64 }
+crystal =
+  Game { romanNumber = "ii", gen = 2, folder = "crystal/transparent", cutoff = 251, extension = "png", key = "gsc", extent = 64 }
+emerald = Game { romanNumber = "iii", gen = 3, folder = "emerald", cutoff = 386, extension = "png", key = "rse", extent = 32 }
 fireRedLeafGreen =
-  Game { romanNumber = "iii", gen = 3, folder = "firered-leafgreen", cutoff = 386, extension = "png", key = "frlg" }
-platinum = Game { romanNumber = "iv", gen = 4, folder = "platinum", cutoff = 493, extension = "png", key = "pt" }
-diamondPearl = Game { romanNumber = "iv", gen = 4, folder = "diamond-pearl", cutoff = 493, extension = "png", key = "dp" }
-heartGoldSoulSilver =
-  Game { romanNumber = "iv", gen = 4, folder = "heartgold-soulsilver", cutoff = 493, extension = "png", key = "hgss" }
-blackWhite = Game { romanNumber = "v", gen = 5, folder = "black-white/animated", cutoff = 649, extension = "gif", key = "bw" }
+  Game { romanNumber = "iii", gen = 3, folder = "firered-leafgreen", cutoff = 386, extension = "png", key = "frlg", extent = 32 }
+platinum = Game { romanNumber = "iv", gen = 4, folder = "platinum", cutoff = 493, extension = "png", key = "pt", extent = 32 }
+diamondPearl =
+  Game { romanNumber = "iv", gen = 4, folder = "diamond-pearl", cutoff = 493, extension = "png", key = "dp", extent = 32 }
+heartGoldSoulSilver = Game
+  { romanNumber = "iv"
+  , gen         = 4
+  , folder      = "heartgold-soulsilver"
+  , cutoff      = 493
+  , extension   = "png"
+  , key         = "hgss"
+  , extent      = 32
+  }
+blackWhite =
+  Game { romanNumber = "v", gen = 5, folder = "black-white/animated", cutoff = 649, extension = "gif", key = "bw", extent = 32 }
 
 unownForms =
   map (tupled . (: [])) ['a' .. 'z'] ++ [("exclamation", "201--exclamation_1.png"), ("question", "201--question_1.png")]
-  where tupled name = (name, "201-" ++ name)
+  where tupled name = (name, "201-" ++ name ++ "_1.png")
 
 forms =
   [ WithAlternateForms { number = 201, gens = [3, 4, 5], formNames = unownForms }

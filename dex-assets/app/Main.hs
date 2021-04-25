@@ -80,13 +80,12 @@ generateIcons ProgramOptions {..} = do
   when refreshIcons $ removeDirectoryRecursive "pokencyclopedia-icons"
   downloadPokencyclopediaIcons
   forM_ [1 .. 5 :: Int] $ \gen -> do
-    createDirectory [i|icons/gen#{gen}|]
     let pokencyclopediaIcons = [i|pokencyclopedia-icons/gen#{gen}|]
-    -- callCommand [i|montage #{pokencyclopediaIcons} -tile 30|]
-    files <- listDirectory pokencyclopediaIcons
-    forM_ files $ \f -> do
-      callCommand [i||]
-      copyFile [i|#{pokencyclopediaIcons}/#{f}|] [i|icons/gen#{gen}/#{f}|]
+    files <-
+      map ((pokencyclopediaIcons ++ "/") ++)
+      .   sortOn (\xs -> (read $ takeWhile isDigit xs) :: Int)
+      <$> listDirectory pokencyclopediaIcons
+    callCommand [i|montage #{unwords files} -background none -geometry +0+0 icons/gen#{gen}.png|]
 
 downloadPokencyclopediaIcons :: IO ()
 downloadPokencyclopediaIcons = do
@@ -100,7 +99,7 @@ downloadPokencyclopediaIcons = do
     forM_ ps $ \(number, name) -> do
       let alternateForms = formNames <$> find (\WithAlternateForms { number = n, ..} -> gen `elem` gens && n == number) forms
       case alternateForms of
-        Nothing -> doDownload dir gen (pad number) (show number)
+        Nothing -> doDownload dir gen (if gen `elem` [1, 2] then [i|#{pad number}|] else [i|#{pad number}_1.png|]) (show number)
         Just fs -> forM_ fs $ \(formName, key) -> doDownload dir gen key [i|#{number}-#{formName}|]
   removeDirectoryRecursive gifs
   removeDirectoryRecursive pngs
@@ -116,6 +115,8 @@ downloadPokencyclopediaIcons = do
         callCommand [i|convert -coalesce #{pathToFile} #{gifs}/#{fileName}.png|]
         renameFile [i|#{gifs}/#{fileName}-0.png|] [i|#{dir}/#{fileName}.png|]
       else renameFile [i|#{pngs}/#{fileName}.png|] [i|#{dir}/#{fileName}.png|]
+    callCommand
+      [i|convert #{dir}/#{fileName}.png -background none -gravity center -extent 32x32 -scale 64x64 #{dir}/#{fileName}.png|]
 
   pokencyclopediaIcons = "pokencyclopedia-icons"
   gifs                 = [i|#{pokencyclopediaIcons}/gifs|]
@@ -123,7 +124,7 @@ downloadPokencyclopediaIcons = do
 
   perGen pokedex = do
     (cut, g) <- nub . map (\Game {..} -> (cutoff, gen)) $ games
-    let ps = map (\Entries { entryNumber = n, species = Species {..} } -> (n, name)) . drop 593 . take cut $ pokedex
+    let ps = map (\Entries { entryNumber = n, species = Species {..} } -> (n, name)) . take cut $ pokedex
     return (g, ps)
 
   folder :: Int -> String
@@ -144,7 +145,7 @@ downloadPokencyclopediaIcons = do
   iconUrl 5 name = old name
 
   old :: String -> String
-  old name = [i|https://www.pokencyclopedia.info/sprites/menu-icons/ico_old/ico_old_#{name}_1.png|]
+  old name = [i|https://www.pokencyclopedia.info/sprites/menu-icons/ico_old/ico_old_#{name}|]
 
 pad :: Int -> String
 pad n
