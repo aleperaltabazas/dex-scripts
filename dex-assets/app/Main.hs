@@ -55,7 +55,7 @@ clonePokeapiSprites path = callCommand [i|git clone git@github.com:pokeapi/sprit
 
 generateSprites :: ProgramOptions -> IO ()
 generateSprites opts = do
-  let spritesDir     = fromMaybe "sprites" (directory opts)
+  let spritesDir     = maybe "sprites" (++ "/sprites") (directory opts)
   let pokeapiSprites = maybe "pokeapi-sprites" (++ "/pokeapi-sprites") (source opts)
   when (refreshSprites opts) $ removeDirectoryRecursive `whenDirectoryExists` pokeapiSprites
   removeDirectoryRecursive `whenDirectoryExists` spritesDir
@@ -64,13 +64,13 @@ generateSprites opts = do
   pokedex <- entries <$> fetchNationalPokedex
   forM_ games $ \g@Game {..} -> do
     putStrLn [i|Generating #{key} sprites|]
-    createDirectory [i|sprites/#{key}|]
-    let pokeapiDirectory = [i|pokeapi-sprites/sprites/pokemon/versions/generation-#{romanNumber}/#{folder}|] :: String
+    createDirectory [i|#{spritesDir}/#{key}|]
+    let pokeapiDirectory = [i|#{pokeapiSprites}/sprites/pokemon/versions/generation-#{romanNumber}/#{folder}|] :: String
     files <- filter (applicable g) <$> listDirectory pokeapiDirectory
     forM_ files $ \file -> do
       let number                             = read . takeWhile isDigit $ file
       let Entries { species = Species {..} } = fromJust . find (\Entries {..} -> entryNumber == number) $ pokedex
-      copyFile [i|#{pokeapiDirectory}/#{file}|] [i|sprites/#{key}/#{name}.#{extension}|]
+      copyFile [i|#{pokeapiDirectory}/#{file}|] [i|#{spritesDir}/#{key}/#{name}.#{extension}|]
  where
   applicable Game {..} file =
     let trim = takeWhile isDigit file in not $ null trim || ((> cutoff) . (read :: String -> Int) $ trim)
@@ -82,7 +82,7 @@ generateIcons ProgramOptions {..} = do
   removeDirectoryRecursive `whenDirectoryExists` icons
   createDirectory `whenDirectoryDoesNotExist` icons
   when refreshIcons $ removeDirectoryRecursive pokencyclopediaIcons
-  downloadPokencyclopediaIcons
+  downloadPokencyclopediaIcons pokencyclopediaIcons
   forM_ [1 .. 5 :: Int] $ \gen -> do
     putStrLn [i|Generating gen #{gen} icons|]
     files <-
@@ -90,14 +90,14 @@ generateIcons ProgramOptions {..} = do
         [i|#{pokencyclopediaIcons}/gen#{gen}|]
     callCommand [i|montage #{unwords files} -background none -geometry +0+0 #{icons}/gen#{gen}.png|]
 
-downloadPokencyclopediaIcons :: IO ()
-downloadPokencyclopediaIcons = do
-  createDirectory `whenDirectoryDoesNotExist` pokencyclopediaIcons
+downloadPokencyclopediaIcons :: FilePath -> IO ()
+downloadPokencyclopediaIcons source = do
+  createDirectory `whenDirectoryDoesNotExist` source
   createDirectory `whenDirectoryDoesNotExist` gifs
   createDirectory `whenDirectoryDoesNotExist` pngs
   pokedex <- entries <$> fetchNationalPokedex
   let pokemonPerGen = perGen pokedex
-  forM_ pokemonPerGen $ \(gen, ps) -> ifDirectoryDoesNotExist [i|#{pokencyclopediaIcons}/gen#{gen}|] $ \dir -> do
+  forM_ pokemonPerGen $ \(gen, ps) -> ifDirectoryDoesNotExist [i|#{source}/gen#{gen}|] $ \dir -> do
     createDirectory dir
     forM_ ps $ \(number, name) -> do
       putStrLn [i|Downloading #{name} icons for gen #{gen}...|]
@@ -121,9 +121,8 @@ downloadPokencyclopediaIcons = do
     callCommand
       [i|convert #{dir}/#{fileName}.png -background none -gravity center -extent 32x32 -scale 64x64 #{dir}/#{fileName}.png|]
 
-  pokencyclopediaIcons = "pokencyclopedia-icons"
-  gifs                 = [i|#{pokencyclopediaIcons}/gifs|]
-  pngs                 = [i|#{pokencyclopediaIcons}/pngs|]
+  gifs = [i|#{source}/gifs|]
+  pngs = [i|#{source}/pngs|]
 
   perGen pokedex = do
     (cut, g) <- [(151, 1), (251, 2), (386, 3), (493, 4), (649, 5)]
