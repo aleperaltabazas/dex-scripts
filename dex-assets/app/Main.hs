@@ -15,6 +15,7 @@ import Network.Pokeapi
 import Options.Applicative
 import System.Directory
 import System.Process
+import Text.Regex.Posix
 
 games = [yellow, crystal, emerald, fireRedLeafGreen, diamondPearl, platinum, heartGoldSoulSilver, blackWhite]
 
@@ -85,10 +86,17 @@ generateIcons ProgramOptions {..} = do
   downloadPokencyclopediaIcons pokencyclopediaIcons
   forM_ [1 .. 5 :: Int] $ \gen -> do
     putStrLn [i|Generating gen #{gen} icons|]
-    files <-
-      map ([i|#{pokencyclopediaIcons}/gen#{gen}/|] ++) . sortOn (\xs -> (read $ takeWhile isDigit xs) :: Int) <$> listDirectory
+    (nonForms, forms) <-
+      partition isRegularForm . map ([i|#{pokencyclopediaIcons}/gen#{gen}/|] ++) . sortByNumber <$> listDirectory
         [i|#{pokencyclopediaIcons}/gen#{gen}|]
-    callCommand [i|montage #{unwords files} -background none -geometry +0+0 #{icons}/gen#{gen}.png|]
+    callCommand [i|montage #{unwords nonForms} -background none -tile 30x -geometry +0+0 #{icons}/gen#{gen}.png|]
+    unless (null forms)
+      $ callCommand [i|montage #{unwords forms} -background none -tile 30x -geometry +0+0 #{icons}/gen#{gen}-forms.png|]
+ where
+  isRegularForm :: String -> Bool
+  isRegularForm = (=~ "[0-9]+.png")
+
+  sortByNumber  = sortOn (\xs -> (read $ takeWhile isDigit xs) :: Int)
 
 downloadPokencyclopediaIcons :: FilePath -> IO ()
 downloadPokencyclopediaIcons source = do
@@ -104,7 +112,9 @@ downloadPokencyclopediaIcons source = do
       let alternateForms = formNames <$> find (\WithAlternateForms { number = n, ..} -> gen `elem` gens && n == number) forms
       case alternateForms of
         Nothing -> doDownload dir gen (if gen `elem` [1, 2] then [i|#{pad number}|] else [i|#{pad number}_1.png|]) (show number)
-        Just fs -> forM_ fs $ \(formName, key) -> doDownload dir gen key [i|#{number}-#{formName}|]
+        Just fs -> do
+          (\(_, key) -> doDownload dir gen key $ show number) $ head fs
+          forM_ fs $ \(formName, key) -> doDownload dir gen key [i|#{number}-#{formName}|]
   removeDirectoryRecursive gifs
   removeDirectoryRecursive pngs
  where
