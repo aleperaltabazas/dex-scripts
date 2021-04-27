@@ -6,6 +6,7 @@ module Main where
 
 import Control.Monad
 import Data.Char
+import Data.Functor.Identity
 import Data.Game
 import Data.List
 import Data.Maybe
@@ -25,6 +26,8 @@ data ProgramOptions
   , refreshIcons :: Bool
   , directory :: Maybe String
   , source :: Maybe String
+  , onlyIcons :: Bool
+  , onlySprites :: Bool
   }
 
 optionParser = do
@@ -34,6 +37,8 @@ optionParser = do
     $ strOption (long "directory" <> short 'd' <> help "Destination directory for the sprites/ and icons/ directories")
   source <- optional $ strOption
     (long "source" <> short 's' <> help "Source directory containing pokencyclopedia-icons/ and pokeapi-sprites/ directories")
+  onlyIcons   <- switch (long "only-icons" <> help "Generate only the icons folder")
+  onlySprites <- switch (long "only-sprites" <> help "Generate only the sprites folder")
   return ProgramOptions { .. }
 
 whenDirectoryExists :: (String -> IO ()) -> String -> IO ()
@@ -83,27 +88,48 @@ generateIcons ProgramOptions {..} = do
   removeDirectoryRecursive `whenDirectoryExists` icons
   createDirectory `whenDirectoryDoesNotExist` icons
   when refreshIcons $ removeDirectoryRecursive pokencyclopediaIcons
-  downloadPokencyclopediaIcons pokencyclopediaIcons
+  pokedex <- entries <$> fetchNationalPokedex
   forM_ [1 .. 5 :: Int] $ \gen -> do
     putStrLn [i|Generating gen #{gen} icons|]
-    (nonForms, forms) <-
-      partition isRegularForm . map ([i|#{pokencyclopediaIcons}/gen#{gen}/|] ++) . sortByNumber <$> listDirectory
-        [i|#{pokencyclopediaIcons}/gen#{gen}|]
-    callCommand [i|montage #{unwords nonForms} -background none -tile 30x -geometry +0+0 #{icons}/gen#{gen}.png|]
-    unless (null forms)
-      $ callCommand [i|montage #{unwords forms} -background none -tile 30x -geometry +0+0 #{icons}/gen#{gen}-forms.png|]
+    (nonForms, forms) <- partition isRegularForm . sortByNumber <$> listDirectory [i|#{pokencyclopediaIcons}/gen#{gen}|]
+    unless (null nonForms) $ doGenerateIcons pokedex pokencyclopediaIcons gen icons [i|gen#{gen}|] nonForms
+    unless (null forms) $ doGenerateIcons pokedex pokencyclopediaIcons gen icons [i|gen#{gen}-forms|] forms
+
  where
-  isRegularForm :: String -> Bool
-  isRegularForm = (=~ "[0-9]+.png")
+  generateCss :: [Entries] -> Int -> FilePath -> FilePath -> [FilePath] -> IO ()
+  generateCss pokedex gen icons fileName files = do
+    let
+      css = flip map files $ \f ->
+        let
+          number                             = numericalPart f
+          Entries { species = Species {..} } = pokedex !! (number - 1)
+          className                          = if isRegularForm f
+            then name
+            else let formName = dropRight (length ".png") . drop (length $ show number) $ f in [i|#{name}#{formName}|]
+        in [i|.#{className}-gen#{gen}{background-position-x:0px;background-position-y:9px;};|] :: String
+    let backgroundFile = reverse . takeWhile (/= '/') . reverse $ fileName
+    let backgroundCss  = [i|.icon-#{fileName}{background: url(#{fileName}.png);};|] :: String
+    writeFile [i|#{icons}/#{fileName}.css|] $ unlines (backgroundCss : css)
 
-  sortByNumber  = sortOn (\xs -> (read $ takeWhile isDigit xs) :: Int)
+  doGenerateIcons :: [Entries] -> FilePath -> Int -> FilePath -> FilePath -> [FilePath] -> IO ()
+  doGenerateIcons pokedex pokencyclopediaIcons gen icons fileName files = do
+    let pokencyclopediaFiles = map ([i|#{pokencyclopediaIcons}/gen#{gen}/|] ++) files :: [String]
+    callCommand [i|montage #{unwords pokencyclopediaFiles} -background none -tile 30x -geometry +0+0 #{icons}/#{fileName}.png|]
+    generateCss pokedex gen icons fileName files
 
-downloadPokencyclopediaIcons :: FilePath -> IO ()
-downloadPokencyclopediaIcons source = do
+  sortByNumber = sortOn numericalPart
+
+  numericalPart :: String -> Int
+  numericalPart = read . takeWhile isDigit
+
+isRegularForm :: String -> Bool
+isRegularForm = (=~ "[0-9]+.png")
+
+downloadPokencyclopediaIcons :: [Entries] -> FilePath -> IO ()
+downloadPokencyclopediaIcons pokedex source = do
   createDirectory `whenDirectoryDoesNotExist` source
   createDirectory `whenDirectoryDoesNotExist` gifs
   createDirectory `whenDirectoryDoesNotExist` pngs
-  pokedex <- entries <$> fetchNationalPokedex
   let pokemonPerGen = perGen pokedex
   forM_ pokemonPerGen $ \(gen, ps) -> ifDirectoryDoesNotExist [i|#{source}/gen#{gen}|] $ \dir -> do
     createDirectory dir
@@ -167,6 +193,9 @@ pad n
 
 main :: IO ()
 main = do
-  opts <- execParser $ info (optionParser <**> helper) (fullDesc <> header "dex-assets")
-  generateSprites opts
-  generateIcons opts
+  opts@ProgramOptions {..} <- execParser $ info (optionParser <**> helper) (fullDesc <> header "dex-assets")
+  unless onlyIcons $ generateSprites opts
+  unless onlySprites $ generateIcons opts
+
+dropRight :: Int -> [a] -> [a]
+dropRight n = reverse . drop n . reverse
