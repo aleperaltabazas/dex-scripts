@@ -96,19 +96,24 @@ generateIcons ProgramOptions {..} = do
     unless (null forms) $ doGenerateIcons pokedex pokencyclopediaIcons gen icons [i|gen#{gen}-forms|] forms
 
  where
+  mapWithIndex :: (Int -> a -> b) -> [a] -> [b]
+  mapWithIndex f xs = let idxs = [0 .. length xs] in zipWith f idxs xs
+
   generateCss :: [Entries] -> Int -> FilePath -> FilePath -> [FilePath] -> IO ()
   generateCss pokedex gen icons fileName files = do
     let
-      css = flip map files $ \f ->
+      css = flip mapWithIndex files $ \idx f ->
         let
           number                             = numericalPart f
           Entries { species = Species {..} } = pokedex !! (number - 1)
           className                          = if isRegularForm f
             then name
             else let formName = dropRight (length ".png") . drop (length $ show number) $ f in [i|#{name}#{formName}|]
-        in [i|.#{className}-gen#{gen}{background-position-x:0px;background-position-y:9px;};|] :: String
+          x = (idx `rem` 30) * 64
+          y = (idx `quot` 30) * 64
+        in [i|.#{className}-gen#{gen}{background-position-x:-#{x}px;background-position-y:-#{y}px;}|] :: String
     let backgroundFile = reverse . takeWhile (/= '/') . reverse $ fileName
-    let backgroundCss  = [i|.icon-#{fileName}{background: url(#{fileName}.png);};|] :: String
+    let backgroundCss  = [i|.icon-#{fileName}{background: url(#{fileName}.png);}|] :: String
     writeFile [i|#{icons}/#{fileName}.css|] $ unlines (backgroundCss : css)
 
   doGenerateIcons :: [Entries] -> FilePath -> Int -> FilePath -> FilePath -> [FilePath] -> IO ()
