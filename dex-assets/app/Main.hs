@@ -11,6 +11,7 @@ import Data.Game
 import Data.List
 import Data.Maybe
 import Data.Pokeapi
+import qualified Data.Game as Game
 import Data.String.Interpolate (i)
 import Network.Pokeapi
 import Options.Applicative
@@ -72,11 +73,17 @@ generateSprites opts = do
     putStrLn [i|Generating #{key} sprites|]
     createDirectory [i|#{spritesDir}/#{key}|]
     let pokeapiDirectory = [i|#{pokeapiSprites}/sprites/pokemon/versions/generation-#{romanNumber}/#{folder}|] :: String
-    files <- filter (applicable g) <$> listDirectory pokeapiDirectory
-    forM_ files $ \file -> do
+    files <- filter (applicable g) . filter canBeSorted <$> listDirectory pokeapiDirectory
+    let (nonForms, forms) = partition isRegularForm . sortByNumber $ files
+    forM_ nonForms $ \file -> do
       let number                             = read . takeWhile isDigit $ file
-      let Entries { species = Species {..} } = fromJust . find (\Entries {..} -> entryNumber == number) $ pokedex
+      let Entries { species = Species {..} } = fromJust $ find (\Entries {..} -> entryNumber == number) pokedex
       copyFile [i|#{pokeapiDirectory}/#{file}|] [i|#{spritesDir}/#{key}/#{name}.#{extension}|]
+    forM_ forms $ \file -> do
+      let number                             = read . takeWhile isDigit $ file
+      let formName                           = dropRight (length extension) . dropWhile isDigit $ file
+      let Entries { species = Species {..} } = fromJust $ find (\Entries {..} -> entryNumber == number) pokedex
+      copyFile [i|#{pokeapiDirectory}/#{file}|] [i|#{spritesDir}/#{key}/#{name}#{formName}#{extension}|]
  where
   applicable Game {..} file =
     let trim = takeWhile isDigit file in not $ null trim || ((> cutoff) . (read :: String -> Int) $ trim)
@@ -122,13 +129,15 @@ generateIcons ProgramOptions {..} = do
     callCommand [i|montage #{unwords pokencyclopediaFiles} -background none -tile 30x -geometry +0+0 #{icons}/#{fileName}.png|]
     generateCss pokedex gen icons fileName files
 
-  sortByNumber = sortOn numericalPart
+numericalPart :: String -> Int
+numericalPart = read . takeWhile isDigit
 
-  numericalPart :: String -> Int
-  numericalPart = read . takeWhile isDigit
+sortByNumber = sortOn numericalPart
+
+canBeSorted = not . null . takeWhile isDigit
 
 isRegularForm :: String -> Bool
-isRegularForm = (=~ "[0-9]+.png")
+isRegularForm = (=~ "[0-9]+.(png|gif)")
 
 downloadPokencyclopediaIcons :: [Entries] -> FilePath -> IO ()
 downloadPokencyclopediaIcons pokedex source = do

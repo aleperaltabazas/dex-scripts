@@ -61,6 +61,12 @@ unownForms =
 forms =
   [ WithAlternateForms { number = 201, gens = [3, 4, 5], formNames = unownForms }
   , WithAlternateForms
+    { number    = 351
+    , gens      = [3, 4, 5]
+    , formNames =
+      [("normal", "351_1.png"), ("sunny", "351-sunny_1.png"), ("rainy", "351-rainy_1.png"), ("snowy", "351-rainy_1.png")]
+    }
+  , WithAlternateForms
     { number    = 386
     , gens      = [3, 4, 5]
     , formNames =
