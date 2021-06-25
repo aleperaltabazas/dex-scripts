@@ -16,6 +16,7 @@ import Data.String.Interpolate (i)
 import Network.Pokeapi
 import Options.Applicative
 import System.Directory
+import System.Exit
 import System.Process
 import Text.Regex.Posix
 
@@ -99,6 +100,7 @@ generateIcons ProgramOptions {..} = do
   forM_ [1 .. 5 :: Int] $ \gen -> do
     putStrLn [i|Generating gen #{gen} icons|]
     (nonForms, forms) <- partition isRegularForm . sortByNumber <$> listDirectory [i|#{pokencyclopediaIcons}/gen#{gen}|]
+    createDirectory [i|#{icons}/gen#{gen}|]
     unless (null nonForms) $ doGenerateIcons pokedex pokencyclopediaIcons gen icons [i|gen#{gen}|] nonForms
     unless (null forms) $ doGenerateIcons pokedex pokencyclopediaIcons gen icons [i|gen#{gen}-forms|] forms
 
@@ -125,9 +127,13 @@ generateIcons ProgramOptions {..} = do
 
   doGenerateIcons :: [Entries] -> FilePath -> Int -> FilePath -> FilePath -> [FilePath] -> IO ()
   doGenerateIcons pokedex pokencyclopediaIcons gen icons fileName files = do
-    let pokencyclopediaFiles = map ([i|#{pokencyclopediaIcons}/gen#{gen}/|] ++) files :: [String]
+    let pokencyclopediaFiles = map ([i|#{pokencyclopediaIcons}/gen#{gen}/|] ++) files
     callCommand [i|montage #{unwords pokencyclopediaFiles} -background none -tile 30x -geometry +0+0 #{icons}/#{fileName}.png|]
     generateCss pokedex gen icons fileName files
+    forM_ files $ \icon -> do
+      let number                             = numericalPart icon
+      let Entries { species = Species {..} } = pokedex !! (number - 1)
+      copyFile [i|#{pokencyclopediaIcons}/gen#{gen}/#{icon}|] [i|#{icons}/gen#{gen}/#{name}.png|]
 
 numericalPart :: String -> Int
 numericalPart = read . takeWhile isDigit
